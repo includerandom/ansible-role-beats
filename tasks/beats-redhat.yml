@@ -39,7 +39,6 @@
   register: beat_install
   until: beat_install is succeeded
   when: use_repository
-  notify: restart the service
 
 - name: RedHat - lock {{ beat }} version
   shell: >-
@@ -59,4 +58,15 @@
   register: beat_install
   until: beat_install is succeeded
   when: not use_repository
-  notify: restart the service
+
+- name: Replace systemd unit filebeat.service
+  template:
+    src: filebeat.service.yml.j2
+    dest: /usr/lib/systemd/system/filebeat.service
+  when: beats_version >= '7.0.0' and beat_install is succeeded
+  register: beat_systemd_replaced
+
+- name: reload systemd daemon
+  systemd:
+    daemon_reload: yes
+  when: beat_install is succeeded and beat_systemd_replaced.changed
